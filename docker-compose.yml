@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  llm-server:
+    build: .
+    image: llm-server:latest
+    container_name: llm-server
+    ports:
+      - "8080:8080"
+    volumes:
+      # Mount models directory as read-only volume
+      - "./models:/models:ro"
+      # Optional: mount logs directory
+      - "./logs:/app/logs"
+    env_file:
+      - .env
+    environment:
+      - MODEL_PATH=/models/${MODEL_NAME}
+      - API_KEY=${API_KEY}
+      - MAX_CONCURRENT=${MAX_CONCURRENT}
+      - MAX_TOKENS_LIMIT=${MAX_TOKENS_LIMIT}
+      - CUDA_VISIBLE_DEVICES=0
+    runtime: nvidia  # Required for GPU access
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  default:
+    name: llm-network
